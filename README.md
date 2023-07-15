@@ -1,7 +1,49 @@
-# Здесь будет ваш проект на Реакте с авторизацией и регистрацией
+# Mesto.Russia - react
+## Cуть проекта
+Интерактивный проект в рамках обучения в [**Яндекс.Практикум**](https://practicum.yandex.ru/).
 
-Используйте ваши предыдущие наработки по проекту Mesto. Это может быть работа 11-го спринта или его улучшенная версия после 2-х последних спринтов. 
+## Описание проекта
+Изучение React Appю
+Этап 1. Портирование готового проекта на React
 
-Все запросы на авторизацию, регистрацию и проверку токена должны работать через сервис `https://auth.nomoreparties.co`. Остальные запросы, не относящиеся к этой проектной работе могут быть к бэкенду из предыдущих спринтов.
+## Используемые Технологии
+HTML:
+* template tag
+* validation tag attributes
 
-Успехов!
+CSS:
+* Flex
+* Grid
+* Media Query
+* calc ()
+
+JS:
+* querySelector
+* function ()
+* classList.togle
+* if / else
+* input.value / .textContent
+* addEventListener
+* методы .some .find
+* Arrays
+* push
+* Append
+* forEach
+* closest() / nextElementSibling
+* ent.target
+* Стрелочные функции
+* ccongig element
+* evt.preventDefault()
+* Class
+* Деструктуризация данных
+
+React:
+* Декларированный подход
+* Хуки
+* Компоненты
+
+## Особенности реализации
+* Этап 1. Первые пробы в React. Перенос стилей, разметки, изображений и попапов. Базовые функции API
+
+### Cсылка на проект
+[**Mesto.Russia.React**](https://uncleshneerson.github.io/mesto-react/).
