@@ -1,7 +1,11 @@
+// К сожалению не успел реализовать мобильную версию, но добавил валидацию
+
 import React from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 
 import { CurrentUserContext } from "../contexts/CurrentUserContext.js";
 import { api } from "../utils/api.js";
+import { auth } from "../utils/auth.js";
 
 import Header from "./Header";
 import Main from "./Main";
@@ -11,6 +15,10 @@ import ImagePopup from "./ImagePopup";
 import EditProfilePopup from "./EditProfilePopup.js";
 import EditAvatarPopup from "./EditAvatarPopup.js";
 import AddPlacePopup from "./AddPlacePopup.js";
+import AuthPopup from "./AuthPopup.js";
+import Login from "./Login.js";
+import Register from "./Register.js";
+import ProtectedRoute from "./ProtectedRoute.js";
 
 export default function App() {
   const [isEditAvatarPopupOpen, setIsEditAvatarPopupOpen] =
@@ -18,21 +26,56 @@ export default function App() {
   const [isEditProfilePopupOpen, setIsEditProfilePopupOpen] =
     React.useState(false);
   const [isAddPlacePopupOpen, setIsAddPlacePopupOpen] = React.useState(false);
+  const [isAuthPopupOpen, setIsAuthPopupOpen] = React.useState(false);
+  const [isAuthOk, setIsAuthOk] = React.useState(false);
   const [unnessesaryCard, setUnnessesaryCard] = React.useState(undefined);
   const [cards, setCards] = React.useState([]);
   const [selectedCard, setSelectedCard] = React.useState({});
-  const [currentUser, setCurrentUser] = React.useState({});
+  const [currentUser, setCurrentUser] = React.useState({
+    name: "",
+    about: "",
+    avatar: "",
+    email: "",
+    _id: "",
+    loggedIn: false,
+  });
   const [loadingText, setLoadingText] = React.useState("");
+
+  const navigate = useNavigate();
 
   // Запрашиваем данные пользователя и карточек
   React.useEffect(() => {
     Promise.all([api.getUserInfo(), api.getInitialCards()])
       .then(([info, initialCards]) => {
-        setCurrentUser(info);
+        setCurrentUser((prevState) => ({
+          ...prevState,
+          name: info.name,
+          about: info.about,
+          avatar: info.avatar,
+          _id: info._id,
+        }));
         setCards(initialCards);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(checkLogIn());
   }, []);
+
+  // Проверяем залогинен ли пользователь
+
+  function checkLogIn() {
+    if (localStorage.getItem("token")) {
+      auth.checkToken(localStorage.getItem("token")).then((res) => {
+        if (res) {
+          setCurrentUser((prevState) => ({
+            ...prevState,
+            loggedIn: true,
+            email: res.data.email,
+          }));
+          navigate("/", { replace: true });
+        }
+      });
+    }
+  }
 
   // Сабмиты
 
@@ -42,7 +85,11 @@ export default function App() {
     api
       .editUserInfo(userData)
       .then((res) => {
-        setCurrentUser(res);
+        setCurrentUser((prevState) => ({
+          ...prevState,
+          name: res.name,
+          about: res.about,
+        }));
         closeAllPopups();
       })
       .catch((err) => console.log(err))
@@ -57,7 +104,10 @@ export default function App() {
     api
       .editUserAvatar(data)
       .then((res) => {
-        setCurrentUser(res);
+        setCurrentUser((prevState) => ({
+          ...prevState,
+          avatar: res.avatar,
+        }));
         closeAllPopups();
       })
       .catch((err) => console.log(err))
@@ -98,12 +148,56 @@ export default function App() {
       });
   }
 
+  function handleLogIn(values) {
+    setLoadingText("Подождите...");
+    auth
+      .signIn(values)
+      .then((res) => {
+        localStorage.setItem("token", res.token);
+        setCurrentUser((prevState) => ({
+          ...prevState,
+          loggedIn: true,
+          email: values.email,
+        }));
+        navigate("/");
+      })
+      .catch((err) => {
+        if (err === 401) {
+          alert("Неверное имя пользователя или пароль");
+        }
+        console.log(`Ошибка: ${err}`);
+      })
+      .finally(() => {
+        setLoadingText("");
+      });
+  }
+
+  function handleSignUp(values) {
+    setLoadingText("Подождите...");
+    auth
+      .signUp(values)
+      .then(() => {
+        setIsAuthOk(true);
+        setIsAuthPopupOpen(true);
+        navigate("/sign-in");
+      })
+      .catch((err) => {
+        console.log(err);
+        setIsAuthOk(false);
+        setIsAuthPopupOpen(true);
+      })
+      .finally(() => {
+        setLoadingText("");
+      });
+  }
+
   // Обработчики
   function closeAllPopups() {
     unnessesaryCard && setUnnessesaryCard(undefined);
     isAddPlacePopupOpen && setIsAddPlacePopupOpen(false);
     isEditAvatarPopupOpen && setIsEditAvatarPopupOpen(false);
     isEditProfilePopupOpen && setIsEditProfilePopupOpen(false);
+    isAuthPopupOpen && setIsAuthPopupOpen(false);
     selectedCard.link && setSelectedCard({});
   }
 
@@ -140,19 +234,49 @@ export default function App() {
       .catch((err) => console.log(err));
   }
 
+  function handleSignOut() {
+    localStorage.removeItem("token");
+    navigate("/sign-in");
+  }
+
   return (
     <CurrentUserContext.Provider value={currentUser}>
-      <Header />
-      <Main
-        cards={cards}
-        onEditProfile={handleEditProfileClick}
-        onAddPlace={handleAddPlaceClick}
-        onEditAvatar={handleEditAvatarClick}
-        onCardClick={handleCardClick}
-        onCardLike={handleCardLike}
-        onDeleteClick={handleDeleteClick}
-      />
+      <Header loggedIn={currentUser.loggedIn} signOut={handleSignOut} />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute
+              element={Main}
+              loggedIn={currentUser.loggedIn}
+              cards={cards}
+              onEditProfile={handleEditProfileClick}
+              onAddPlace={handleAddPlaceClick}
+              onEditAvatar={handleEditAvatarClick}
+              onCardClick={handleCardClick}
+              onCardLike={handleCardLike}
+              onDeleteClick={handleDeleteClick}
+            />
+          }
+        />
+        <Route
+          path="/sign-in"
+          element={<Login loadingText={loadingText} onSubmit={handleLogIn} />}
+        />
+        <Route
+          path="/sign-up"
+          element={
+            <Register loadingText={loadingText} onSubmit={handleSignUp} />
+          }
+        />
+      </Routes>
+
       <Footer />
+      <AuthPopup
+        isOpen={isAuthPopupOpen}
+        onClose={closeAllPopups}
+        isItOk={isAuthOk}
+      />
       <EditAvatarPopup
         isOpen={isEditAvatarPopupOpen}
         onClose={closeAllPopups}

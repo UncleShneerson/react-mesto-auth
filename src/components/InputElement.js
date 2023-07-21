@@ -1,5 +1,6 @@
 import React from "react";
 export default function InputElement({
+  theme = "",
   placeHolder = "",
   name,
   errorMessages = {},
@@ -18,7 +19,7 @@ export default function InputElement({
         name={name}
         minLength={minLength}
         maxLength={maxLength}
-        className={`form__input ${
+        className={`form__input ${theme && `form__input_theme_${theme}`} ${
           errorMessages[name] !== "" && "form__input_type_error"
         }`}
         onChange={onChange}

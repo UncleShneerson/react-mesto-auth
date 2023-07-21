@@ -10,6 +10,7 @@
 }
 
 .form__input:focus {
+  width: calc(100% - 10px);
   padding: 5px 5px 10px 5px;
   outline-color: rgba(0,0,0,0.2);
   outline-width: 1px;

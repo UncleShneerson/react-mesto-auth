@@ -1,14 +1,15 @@
-.popup__header {
+.subheader {
   width: 100%;
   padding: 0;
-  margin: 0 0 42px 0;
+  margin: 0;
   font-weight: 900;
   font-size: 24px;
   line-height: 1.22;
+  text-align: center;
 }
 
 @media only screen and (max-width: 537.5px) {
-  .popup__header {
+  .subheader {
     font-size: 18px;
     margin: 0 0 70px 0;
   }
