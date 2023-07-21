@@ -270,7 +270,6 @@ export default function App() {
           }
         />
       </Routes>
-
       <Footer />
       <AuthPopup
         isOpen={isAuthPopupOpen}
