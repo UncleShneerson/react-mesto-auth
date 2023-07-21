@@ -1,7 +1,7 @@
 // К сожалению не успел реализовать мобильную версию, но добавил валидацию
 
 import React from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
 import { CurrentUserContext } from "../contexts/CurrentUserContext.js";
 import { api } from "../utils/api.js";
@@ -19,6 +19,7 @@ import AuthPopup from "./AuthPopup.js";
 import Login from "./Login.js";
 import Register from "./Register.js";
 import ProtectedRoute from "./ProtectedRoute.js";
+import Popup from "./Popup.js";
 
 export default function App() {
   const [isEditAvatarPopupOpen, setIsEditAvatarPopupOpen] =
@@ -43,39 +44,46 @@ export default function App() {
 
   const navigate = useNavigate();
 
-  // Запрашиваем данные пользователя и карточек
+  // Проверяем токен
   React.useEffect(() => {
-    Promise.all([api.getUserInfo(), api.getInitialCards()])
-      .then(([info, initialCards]) => {
-        setCurrentUser((prevState) => ({
-          ...prevState,
-          name: info.name,
-          about: info.about,
-          avatar: info.avatar,
-          _id: info._id,
-        }));
-        setCards(initialCards);
-      })
-      .catch(console.error)
-      .finally(checkLogIn());
+    if (localStorage.getItem("token")) {
+      auth
+        .checkToken(localStorage.getItem("token"))
+        .then((res) => {
+          if (res) {
+            setCurrentUser((prevState) => ({
+              ...prevState,
+              loggedIn: true,
+              email: res.data.email,
+            }));
+            navigate("/", { replace: true });
+          }
+        })
+        .catch(console.error);
+    } else {
+      return;
+    }
   }, []);
 
-  // Проверяем залогинен ли пользователь
-
-  function checkLogIn() {
-    if (localStorage.getItem("token")) {
-      auth.checkToken(localStorage.getItem("token")).then((res) => {
-        if (res) {
+  // Запрашиваем данные пользователя и карточек
+  React.useEffect(() => {
+    if (currentUser.loggedIn) {
+      Promise.all([api.getUserInfo(), api.getInitialCards()])
+        .then(([info, initialCards]) => {
           setCurrentUser((prevState) => ({
             ...prevState,
-            loggedIn: true,
-            email: res.data.email,
+            name: info.name,
+            about: info.about,
+            avatar: info.avatar,
+            _id: info._id,
           }));
-          navigate("/", { replace: true });
-        }
-      });
+          setCards(initialCards);
+        })
+        .catch(console.error);
+    } else {
+      return;
     }
-  }
+  }, [currentUser.loggedIn]);
 
   // Сабмиты
 
@@ -162,10 +170,18 @@ export default function App() {
         navigate("/");
       })
       .catch((err) => {
-        if (err === 401) {
-          alert("Неверное имя пользователя или пароль");
+        let message;
+        switch (err) {
+          case 401:
+            message = "Неверное имя пользователя или пароль";
+            break;
+          case 400:
+            message = "Не передано одно из полей";
+            break;
+          default:
+            message = "Что-то пошло не так. Попробуйте снова.";
         }
-        console.log(`Ошибка: ${err}`);
+        alert(`Ошибка: ${err} - ${message}`);
       })
       .finally(() => {
         setLoadingText("");
@@ -237,6 +253,11 @@ export default function App() {
   function handleSignOut() {
     localStorage.removeItem("token");
     navigate("/sign-in");
+    setCurrentUser((prevState) => ({
+      ...prevState,
+      loggedIn: false,
+      email: "",
+    }));
   }
 
   return (
@@ -261,7 +282,13 @@ export default function App() {
         />
         <Route
           path="/sign-in"
-          element={<Login loadingText={loadingText} onSubmit={handleLogIn} />}
+          element={
+            currentUser.loggedIn ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Login loadingText={loadingText} onSubmit={handleLogIn} />
+            )
+          }
         />
         <Route
           path="/sign-up"
@@ -269,6 +296,7 @@ export default function App() {
             <Register loadingText={loadingText} onSubmit={handleSignUp} />
           }
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Footer />
       <AuthPopup
